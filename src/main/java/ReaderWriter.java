@@ -22,12 +22,15 @@ public class ReaderWriter {
                 while (isWriting) {
                     notWriting.await();
                 }
-                numReading++;
+                int x = ++numReading;
+                lock.unlock();
                 String contents = fakeFile;
-                System.out.println(contents);
+                System.out.println(contents + " " + x);
+                lock.lock();
                 numReading--;
                 if(numReading == 0 && !isWriting) {
                     notReadingOrWriting.signal();
+                    notWriting.signalAll();
                 }
             }
             catch (InterruptedException e) {
@@ -57,7 +60,8 @@ public class ReaderWriter {
                 isWriting = true;
                 fakeFile += this.contents;
                 isWriting = false;
-                notWriting.signal();
+                notReadingOrWriting.signal();
+                notWriting.signalAll();
             }
             catch (InterruptedException e) {
                 e.printStackTrace();
@@ -72,13 +76,14 @@ public class ReaderWriter {
         ExecutorService es = Executors.newFixedThreadPool(10);
         for(int i = 0; i < 26; i++) {
             es.submit(
-                    new Reader()
+                    new Writer(""+ (char)('A'+i))
             );
             es.submit(
-                    new Writer(""+ (char)('A'+i))
+                    new Reader()
             );
         }
         es.shutdown();
         es.awaitTermination(10, TimeUnit.SECONDS);
+        System.out.println(numReading);
     }
 }
