@@ -10,7 +10,6 @@ public class ReaderWriter {
     private static final Lock lock = new ReentrantLock();
     private static boolean isWriting = false;
     private static int numReading = 0;
-    private static final Condition notWriting = lock.newCondition();
     private static final Condition notReadingOrWriting = lock.newCondition();
 
     private static String fakeFile = "";
@@ -20,7 +19,7 @@ public class ReaderWriter {
             lock.lock();
             try {
                 while (isWriting) {
-                    notWriting.await();
+                    notReadingOrWriting.await();
                 }
                 int x = ++numReading;
                 lock.unlock();
@@ -29,8 +28,7 @@ public class ReaderWriter {
                 lock.lock();
                 numReading--;
                 if(numReading == 0 && !isWriting) {
-                    notReadingOrWriting.signal();
-                    notWriting.signalAll();
+                    notReadingOrWriting.signalAll();
                 }
             }
             catch (InterruptedException e) {
@@ -60,8 +58,7 @@ public class ReaderWriter {
                 isWriting = true;
                 fakeFile += this.contents;
                 isWriting = false;
-                notReadingOrWriting.signal();
-                notWriting.signalAll();
+                notReadingOrWriting.signalAll();
             }
             catch (InterruptedException e) {
                 e.printStackTrace();
